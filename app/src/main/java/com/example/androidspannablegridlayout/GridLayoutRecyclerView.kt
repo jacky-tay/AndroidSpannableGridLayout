@@ -2,6 +2,7 @@ package com.example.androidspannablegridlayout
 
 import android.content.Context
 import android.util.AttributeSet
+import android.util.Log
 import android.util.SparseArray
 import android.view.View
 import android.view.ViewGroup
@@ -18,12 +19,17 @@ import kotlin.math.max
 class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutListener,
     ViewTreeObserver.OnScrollChangedListener {
     constructor(context: Context) : super(context)
-    constructor(context: Context, attributes: AttributeSet) : super(context, attributes)
+    constructor(context: Context, attributes: AttributeSet) : super(context, attributes) {
+        setAttributes(attributes)
+    }
+
     constructor(context: Context, attributes: AttributeSet, defStyleAttributeSet: Int) : super(
         context,
         attributes,
         defStyleAttributeSet
-    )
+    ) {
+        setAttributes(attributes)
+    }
 
     init {
         View.inflate(context, R.layout.grid_layout_recycler_view, this)
@@ -34,20 +40,36 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
 
     @DimenRes
     var margin = R.dimen.default_gap
+    var addSidePadding = true
     var adapter: Adapter<T>? = null
+        set(newValue) {
+            newValue?.let { maxRowCount = it.definitions.fold(0) { m, h -> max(m, h.maxRow) } }
+            field = newValue
+        }
     var columnCount: Int = 1
         set(newValue) {
             gridLayout.columnCount = newValue
             field = newValue
         }
 
+    private var maxRowCount: Int? = null
     private var gridLayout: GridLayout
     private var columnWidth = 0
     private var visibleRowCount = 0
     private var cachedCell = SparseArray<T>()
     private var reusableIds = mutableListOf<Int>()
+
+    private var cellGap: Int? = null
     private val gap: Int
-        get() = resources.getDimensionPixelSize(margin)
+        get() = cellGap ?: resources.getDimensionPixelSize(margin)
+
+    private fun setAttributes(attributes: AttributeSet) {
+        val array = context.obtainStyledAttributes(attributes, R.styleable.GridLayoutRecyclerView)
+        columnCount = array.getInt(R.styleable.GridLayoutRecyclerView_column_count, 1)
+        cellGap = array.getDimensionPixelSize(R.styleable.GridLayoutRecyclerView_padding, R.dimen.default_gap)
+        addSidePadding = array.getBoolean(R.styleable.GridLayoutRecyclerView_side_padding, addSidePadding)
+        array.recycle()
+    }
 
     // region Grid Layout Definition
     class Definition(
@@ -60,12 +82,15 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
         val maxRow: Int
             get() = rowSpan + rowStart
 
-        fun buildLayoutParams(columnWidth: Int, gap: Int = 0) = GridLayout.LayoutParams(
+        val maxCol: Int
+            get() = colSpan + colStart
+
+        fun buildLayoutParams(columnWidth: Int, rightGap: Int = 0, bottomGap: Int = 0) = GridLayout.LayoutParams(
             GridLayout.spec(rowStart, rowSpan),
             GridLayout.spec(colStart, colSpan)
         ).apply {
-            width = (columnWidth * colSpan) - gap
-            height = (columnWidth * rowSpan) - gap
+            width = (columnWidth * colSpan) - rightGap
+            height = (columnWidth * rowSpan) - bottomGap
         }
     }
     // endregion
@@ -83,14 +108,16 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
 
     // region ViewTreeObserver.OnGlobalLayoutListener
     override fun onGlobalLayout() {
-        columnWidth = (gridLayout.width - gap) / gridLayout.columnCount
+        val sideGap = if(addSidePadding) gap else 0
+        columnWidth = (gridLayout.width - sideGap) / gridLayout.columnCount
         prepareViews()
         viewTreeObserver.removeOnGlobalLayoutListener(this)
     }
 
     private fun prepareViews() {
         val zero = resources.getDimensionPixelSize(R.dimen.zero)
-        gridLayout.setPadding(gap, gap, zero, zero)
+        if (addSidePadding)
+            gridLayout.setPadding(gap, gap, zero, zero)
         visibleRowCount = ceil(height.toDouble() / columnWidth.toDouble()).toInt()
 
         adapter?.definitions?.forEach {
@@ -108,7 +135,8 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
 
     private fun renderVisibleContent() = adapter?.apply {
         val offsetY = scrollY
-        val minVisibleRow = max(0, floor((offsetY - gap).toDouble() / columnWidth.toDouble()).toInt())
+        val topGap = if (addSidePadding) gap else 0
+        val minVisibleRow = max(0, floor((offsetY - topGap).toDouble() / columnWidth.toDouble()).toInt())
         val maxVisibleRow = minVisibleRow + visibleRowCount
 
         val visibleIds =
@@ -134,11 +162,24 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
         val view = (holder as? RecyclerView.ViewHolder)?.itemView ?: holder as? View ?: return
         val def = adapter?.definitions?.get(position) ?: return
         view.tag = def.id
-        val params = def.buildLayoutParams(columnWidth, gap)
+        val rightGap = when {
+            !addSidePadding && def.maxCol == gridLayout.columnCount -> 0
+            else -> gap
+        }
+        val bottomGap = when {
+            !addSidePadding && def.maxRow == maxRowCount -> 0
+            else -> gap
+        }
 
-        if ((def.colStart + def.colSpan) < gridLayout.columnCount)
-            params.rightMargin = gap
-        params.bottomMargin = gap
+        if (rightGap == 0) {
+            Log.i("YOLLO", "Right Gap is zero")
+        }
+
+        val params = def.buildLayoutParams(columnWidth, rightGap, bottomGap)
+
+        params.rightMargin = rightGap
+        params.bottomMargin = bottomGap
+
         gridLayout.addView(view, params)
     }
 

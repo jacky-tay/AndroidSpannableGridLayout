@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="GridLayoutRecyclerView">
+        <attr name="column_count" format="integer"/>
+        <attr name="padding" format="dimension"/>
+        <attr name="side_padding" format="boolean"/>
+    </declare-styleable>
+</resources>

@@ -28,7 +28,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         gridLayoutRecyclerView = findViewById(R.id.grid_layout_recycler_view)
-        gridLayoutRecyclerView.columnCount = 6
         gridLayoutRecyclerView.adapter = Adapter()
     }
 
