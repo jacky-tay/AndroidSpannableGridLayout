@@ -1,7 +1,6 @@
 package com.example.androidspannablegridlayout
 
 import android.os.Bundle
-import android.util.Log.i
 import android.util.SparseArray
 import android.view.LayoutInflater
 import android.view.View
@@ -30,6 +29,7 @@ class MainActivity : AppCompatActivity(), ViewTreeObserver.OnGlobalLayoutListene
 
     @DimenRes
     var margin = R.dimen.default_gap
+
     private val gap: Int
         get() = resources.getDimensionPixelSize(margin)
 
@@ -44,68 +44,53 @@ class MainActivity : AppCompatActivity(), ViewTreeObserver.OnGlobalLayoutListene
         gridLayout.viewTreeObserver.addOnGlobalLayoutListener(this)
     }
 
-    private fun prepareScrollableContent() {
-        val totalRow = definitions.fold(0) { m, i -> max(m, i.maxRow) }
-        val params = GridLayout.LayoutParams(
-            GridLayout.spec(0, totalRow),
-            GridLayout.spec(0, gridLayout.columnCount)
-        ).apply {
-            width = gridLayout.width
-            height = totalRow * columnWidth
-        }
-
-        gridLayout.addView(View(applicationContext), params)
-    }
-
     private fun getView() =
         (if (reusableIds.isNotEmpty())
             (cachedCell[reusableIds.removeAt(0)])
         else null) ?: ViewHolder(LayoutInflater.from(applicationContext).inflate(R.layout.list_item_view_holder, null))
 
-
     private fun prepareViews() {
-
         val zero = resources.getDimensionPixelSize(R.dimen.zero)
         gridLayout.setPadding(gap, gap, zero, zero)
         visibleRowCount = ceil(scrollView.height.toDouble() / columnWidth.toDouble()).toInt()
-        prepareScrollableContent()
 
-        for (i in 0.until(items.count())) {
-            val def = definitions[i]
-            // add placeholder
-            gridLayout.addView(Space(applicationContext), GridLayout.LayoutParams(
-                GridLayout.spec(def.rowStart, def.rowSpan),
-                GridLayout.spec(def.colStart, def.colSpan)
-            ).apply {
-                width = (columnWidth * def.colSpan)
-                height = (columnWidth * def.rowSpan)
-            })
+        definitions.forEach {
+            gridLayout.addView(Space(applicationContext), it.buildLayoutParams(columnWidth))
+        } // add placeholders, this is to ensure that when grid layout's view is removed, it won't mess up with content position
 
-            if ((def.rowStart * columnWidth) < scrollView.height + columnWidth) {
-                val view = getView()
-                view.bind(items[i], i)
-                layout(view, i)
-            }
-        }
+        renderVisibleContent()
     }
 
     private fun layout(holder: ViewHolder, position: Int) {
         val view = holder.itemView
         val def = definitions[position]
-        view.tag = holder
-        view.id = position
-        val params = GridLayout.LayoutParams(
-            GridLayout.spec(def.rowStart, def.rowSpan),
-            GridLayout.spec(def.colStart, def.colSpan)
-        ).apply {
-            width = (columnWidth * def.colSpan) - gap
-            height = (columnWidth * def.rowSpan) - gap
-        }
+        view.tag = position
+        val params = def.buildLayoutParams(columnWidth, gap)
 
         if ((def.colStart + def.colSpan) < gridLayout.columnCount)
             params.rightMargin = gap
         params.bottomMargin = gap
         gridLayout.addView(view, params)
+    }
+
+    private fun renderVisibleContent() {
+        val offsetY = scrollView.scrollY
+        val minVisibleRow = max(0, floor((offsetY - gap).toDouble() / columnWidth.toDouble()).toInt())
+        val maxVisibleRow = minVisibleRow + visibleRowCount
+
+        val visibleIds = definitions.filter { it.maxRow >= minVisibleRow && it.rowStart < maxVisibleRow }.map { it.id }
+        reusableIds = definitions.map { it.id }.minus(visibleIds).toMutableList()
+
+        definitions.filter { reusableIds.contains(it.id) }.forEach {
+            (gridLayout.findViewWithTag<View>(it.id))?.let { view ->
+                gridLayout.removeView(view)
+            }
+        } // remove invisible view from grid layout
+        definitions.filter { visibleIds.contains(it.id) && gridLayout.findViewWithTag<View>(it.id) == null }.forEach {
+            val view = getView()
+            view.bind(items[it.id], it.id)
+            layout(view, it.id)
+        } // add view if its not visible in grid layout
     }
 
     private fun prepareItems() = listOf(
@@ -139,7 +124,7 @@ class MainActivity : AppCompatActivity(), ViewTreeObserver.OnGlobalLayoutListene
 
     // region ViewTreeObserver.OnGlobalLayoutListener
     override fun onGlobalLayout() {
-        columnWidth = (gridLayout.width - resources.getDimensionPixelSize(R.dimen.default_gap)) / gridLayout.columnCount
+        columnWidth = (gridLayout.width - gap) / gridLayout.columnCount
         prepareViews()
         gridLayout.viewTreeObserver.removeOnGlobalLayoutListener(this)
     }
@@ -147,25 +132,7 @@ class MainActivity : AppCompatActivity(), ViewTreeObserver.OnGlobalLayoutListene
 
     // region ViewTreeObserver.OnScrollChangedListener
     override fun onScrollChanged() {
-        val offsetY = scrollView.scrollY
-        val minVisibleRow = max(0, floor((offsetY - gap).toDouble() / columnWidth.toDouble()).toInt())
-        val maxVisibleRow = minVisibleRow + visibleRowCount
-
-        val visibleIds = definitions.filter { it.maxRow >= minVisibleRow && it.rowStart <= maxVisibleRow }.map { it.id }
-        reusableIds = definitions.map { it.id }.minus(visibleIds).toMutableList()
-
-        definitions.filter { reusableIds.contains(it.id) }.forEach {
-            gridLayout.findViewById<View>(it.id)?.let { view ->
-                gridLayout.removeView(view)
-            }
-        }
-        definitions.filter { visibleIds.contains(it.id) }.forEach {
-            if (gridLayout.findViewById<View>(it.id) == null) {
-                val view = getView()
-                view.bind(items[it.id], it.id)
-                layout(view, it.id)
-            }
-        }
+        renderVisibleContent()
     }
     // endregion
 }
