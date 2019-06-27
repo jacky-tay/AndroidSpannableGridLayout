@@ -58,6 +58,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
     private var visibleRowCount = 0
     private var cachedCell = SparseArray<T>()
     private var reusableIds = mutableListOf<Int>()
+    private var visibleRowRange = 0..0
 
     private var cellGap: Int? = null
     private val gap: Int
@@ -74,7 +75,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
     // region Grid Layout Definition
     class Definition(
         val id: Int,
-        private val rowSpan: Int,
+        val rowSpan: Int,
         val colSpan: Int,
         var rowStart: Int = 0,
         var colStart: Int = 0
@@ -108,7 +109,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
 
     // region ViewTreeObserver.OnGlobalLayoutListener
     override fun onGlobalLayout() {
-        val sideGap = if(addSidePadding) gap else 0
+        val sideGap = if (addSidePadding) gap else 0
         columnWidth = (gridLayout.width - sideGap) / gridLayout.columnCount
         prepareViews()
         viewTreeObserver.removeOnGlobalLayoutListener(this)
@@ -139,23 +140,26 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
         val minVisibleRow = max(0, floor((offsetY - topGap).toDouble() / columnWidth.toDouble()).toInt())
         val maxVisibleRow = minVisibleRow + visibleRowCount
 
-        val visibleIds =
-            definitions.filter { it.maxRow >= minVisibleRow && it.rowStart <= maxVisibleRow }.map { it.id }
-        reusableIds = definitions.map { it.id }.minus(visibleIds).toMutableList()
+        if (!visibleRowRange.contains(minVisibleRow) || !visibleRowRange.contains(maxVisibleRow)) {
+            val visibleIds =
+                definitions.filter { it.maxRow >= minVisibleRow && it.rowStart <= maxVisibleRow }.map { it.id }
+            reusableIds = definitions.map { it.id }.minus(visibleIds).toMutableList()
 
-        definitions.filter { reusableIds.contains(it.id) }.forEach {
-            (gridLayout.findViewWithTag<View>(it.id))?.let { view ->
-                gridLayout.removeView(view)
-            }
-        } // remove invisible view from grid layout
+            definitions.filter { reusableIds.contains(it.id) }.forEach {
+                (gridLayout.findViewWithTag<View>(it.id))?.let { view ->
+                    gridLayout.removeView(view)
+                }
+            } // remove invisible view from grid layout
 
-        definitions.filter { visibleIds.contains(it.id) && gridLayout.findViewWithTag<View>(it.id) == null }
-            .forEach {
-                getView(getItemViewType(it.id))?.let { view ->
-                    adapter?.onBindViewHolder(view, it.id)
-                    prepareLayout(view, it.id)
-                } // view
-            } // add view if its not visible in grid layout
+            definitions.filter { visibleIds.contains(it.id) && gridLayout.findViewWithTag<View>(it.id) == null }
+                .forEach {
+                    getView(getItemViewType(it.id))?.let { view ->
+                        adapter?.onBindViewHolder(view, it.id)
+                        prepareLayout(view, it.id)
+                    } // view
+                } // add view if its not visible in grid layout
+        }
+        visibleRowRange = minVisibleRow..maxVisibleRow
     }
 
     private fun prepareLayout(holder: T, position: Int) {
@@ -169,10 +173,6 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
         val bottomGap = when {
             !addSidePadding && def.maxRow == maxRowCount -> 0
             else -> gap
-        }
-
-        if (rightGap == 0) {
-            Log.i("YOLLO", "Right Gap is zero")
         }
 
         val params = def.buildLayoutParams(columnWidth, rightGap, bottomGap)
