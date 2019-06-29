@@ -67,7 +67,10 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
     private fun setAttributes(attributes: AttributeSet) {
         val array = context.obtainStyledAttributes(attributes, R.styleable.GridLayoutRecyclerView)
         columnCount = array.getInt(R.styleable.GridLayoutRecyclerView_column_count, 1)
-        cellGap = array.getDimensionPixelSize(R.styleable.GridLayoutRecyclerView_padding, R.dimen.default_gap)
+        cellGap = array.getDimensionPixelSize(
+            R.styleable.GridLayoutRecyclerView_padding,
+            resources.getDimensionPixelSize(R.dimen.zero)
+        )
         addSidePadding = array.getBoolean(R.styleable.GridLayoutRecyclerView_side_padding, addSidePadding)
         array.recycle()
     }
@@ -141,30 +144,26 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
         val maxVisibleRow = minVisibleRow + visibleRowCount
 
         if (!visibleRowRange.contains(minVisibleRow) || !visibleRowRange.contains(maxVisibleRow)) {
-            val visibleIds =
-                definitions.filter { it.maxRow >= minVisibleRow && it.rowStart <= maxVisibleRow }.map { it.id }
-            reusableIds = definitions.map { it.id }.minus(visibleIds).toMutableList()
+            val visibleIds = definitions
+                .filter { it.maxRow >= minVisibleRow && it.rowStart <= maxVisibleRow }
+                .map { it.id }
 
-            definitions.filter { reusableIds.contains(it.id) }.forEach {
-                (gridLayout.findViewWithTag<View>(it.id))?.let { view ->
-                    gridLayout.removeView(view)
-                }
-            } // remove invisible view from grid layout
+            reusableIds = definitions.map { it.id }
+                .minus(visibleIds)
+                .filter { gridLayout.findViewWithTag<View>(it) != null }
+                .toMutableList()
 
             definitions.filter { visibleIds.contains(it.id) && gridLayout.findViewWithTag<View>(it.id) == null }
                 .forEach {
-                    getView(getItemViewType(it.id))?.let { view ->
-                        adapter?.onBindViewHolder(view, it.id)
-                        prepareLayout(view, it.id)
-                    } // view
+                    prepareView(it.id)
                 } // add view if its not visible in grid layout
         }
         visibleRowRange = minVisibleRow..maxVisibleRow
     }
 
-    private fun prepareLayout(holder: T, position: Int) {
-        val view = (holder as? RecyclerView.ViewHolder)?.itemView ?: holder as? View ?: return
-        val def = adapter?.definitions?.get(position) ?: return
+    private fun prepareLayout(holder: T, position: Int): GridLayout.LayoutParams? {
+        val view = (holder as? RecyclerView.ViewHolder)?.itemView ?: holder as? View ?: return null
+        val def = adapter?.definitions?.get(position) ?: return null
         view.tag = def.id
         val rightGap = when {
             !addSidePadding && def.maxCol == gridLayout.columnCount -> 0
@@ -179,13 +178,29 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
 
         params.rightMargin = rightGap
         params.bottomMargin = bottomGap
-
-        gridLayout.addView(view, params)
+        view.layoutParams = params
+        return params
     }
 
-    private fun getView(viewType: Int) =
-        (if (reusableIds.isNotEmpty())
-            (cachedCell[reusableIds.removeAt(0)])
-        else null) ?: adapter?.onCreateViewHolder(this, viewType)
+    private fun prepareView(id: Int) = adapter?.apply {
+        val viewType = getItemViewType(id)
+        var reuseId: Int? = null
+        val vh = reusableIds.firstOrNull { getItemViewType(id) == viewType }?.let {
+            reuseId = it
+            reusableIds.remove(it)
+            Log.d("deque", "reuse: $it for $id, reuseSize: ${reusableIds.size}")
+            cachedCell[it].apply { cachedCell.remove(it) }
+        } ?: onCreateViewHolder(this@GridLayoutRecyclerView, viewType).apply {
+            Log.d("deque", "create: $id, reuseSize: ${reusableIds.size}")
+        }
+        onBindViewHolder(vh, id)
+        cachedCell.append(id, vh)
+        prepareLayout(vh, id)?.let { params ->
+            if (reuseId == null || gridLayout.findViewWithTag<View>(id) == null) ((vh as? RecyclerView.ViewHolder)?.itemView
+                ?: vh as? View)?.let {
+                gridLayout.addView(it, params)
+            } // add view to grid layout if it's newly created
+        } // prepareLayout
+    }
     // endregion
 }
