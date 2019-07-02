@@ -2,7 +2,8 @@
 <resources>
     <declare-styleable name="GridLayoutRecyclerView">
         <attr name="column_count" format="integer"/>
-        <attr name="padding" format="dimension"/>
-        <attr name="side_padding" format="boolean"/>
+        <attr name="cell_gap" format="dimension"/>
+        <attr name="add_side_padding" format="boolean"/>
+        <attr name="right_to_left" format="boolean"/>
     </declare-styleable>
 </resources>

@@ -21,7 +21,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = ViewHolder(LayoutInflater.from(applicationContext).inflate(R.layout.list_item_view_holder, parent, false)!!)
-
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

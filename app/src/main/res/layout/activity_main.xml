@@ -11,8 +11,8 @@
             android:id="@+id/grid_layout_recycler_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:padding="@dimen/default_gap"
-            app:side_padding="true"
+            app:cell_gap="@dimen/default_gap"
+            app:add_side_padding="true"
             app:column_count="6"/>
 
 </LinearLayout>

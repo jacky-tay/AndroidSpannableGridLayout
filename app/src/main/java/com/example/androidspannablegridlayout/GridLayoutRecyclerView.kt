@@ -24,9 +24,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
     }
 
     constructor(context: Context, attributes: AttributeSet, defStyleAttributeSet: Int) : super(
-        context,
-        attributes,
-        defStyleAttributeSet
+        context, attributes, defStyleAttributeSet
     ) {
         setAttributes(attributes)
     }
@@ -51,6 +49,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
             gridLayout.columnCount = newValue
             field = newValue
         }
+    var rightToLeft = false
 
     private var maxRowCount: Int? = null
     private var gridLayout: GridLayout
@@ -68,10 +67,11 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
         val array = context.obtainStyledAttributes(attributes, R.styleable.GridLayoutRecyclerView)
         columnCount = array.getInt(R.styleable.GridLayoutRecyclerView_column_count, 1)
         cellGap = array.getDimensionPixelSize(
-            R.styleable.GridLayoutRecyclerView_padding,
+            R.styleable.GridLayoutRecyclerView_cell_gap,
             resources.getDimensionPixelSize(R.dimen.zero)
         )
-        addSidePadding = array.getBoolean(R.styleable.GridLayoutRecyclerView_side_padding, addSidePadding)
+        rightToLeft = array.getBoolean(R.styleable.GridLayoutRecyclerView_right_to_left, rightToLeft)
+        addSidePadding = array.getBoolean(R.styleable.GridLayoutRecyclerView_add_side_padding, addSidePadding)
         array.recycle()
     }
 
@@ -89,9 +89,15 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
         val maxCol: Int
             get() = colSpan + colStart
 
-        fun buildLayoutParams(columnWidth: Int, rightGap: Int = 0, bottomGap: Int = 0) = GridLayout.LayoutParams(
+        fun buildLayoutParams(
+            columnWidth: Int,
+            rightToLeft: Boolean,
+            columnCount: Int,
+            rightGap: Int = 0,
+            bottomGap: Int = 0
+        ) = GridLayout.LayoutParams(
             GridLayout.spec(rowStart, rowSpan),
-            GridLayout.spec(colStart, colSpan)
+            GridLayout.spec(if (rightToLeft) columnCount - maxCol else colStart, colSpan)
         ).apply {
             width = (columnWidth * colSpan) - rightGap
             height = (columnWidth * rowSpan) - bottomGap
@@ -102,7 +108,8 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
     // region Grid Layout Adapter
     abstract class Adapter<T> {
         abstract var definitions: List<Definition>
-        fun getItemViewType(id: Int) = 0
+
+        open fun getItemViewType(id: Int) = 0
 
         abstract fun onBindViewHolder(holder: T, id: Int)
 
@@ -125,7 +132,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
         visibleRowCount = ceil(height.toDouble() / columnWidth.toDouble()).toInt()
 
         adapter?.definitions?.forEach {
-            gridLayout.addView(Space(context), it.buildLayoutParams(columnWidth))
+            gridLayout.addView(Space(context), it.buildLayoutParams(columnWidth, rightToLeft, columnCount))
         } // add placeholders, this is to ensure that when grid layout's view is removed, it won't mess up with content position
 
         renderVisibleContent()
@@ -161,9 +168,9 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
         visibleRowRange = minVisibleRow..maxVisibleRow
     }
 
-    private fun prepareLayout(holder: T, position: Int): GridLayout.LayoutParams? {
+    private fun prepareLayout(holder: T, id: Int): GridLayout.LayoutParams? {
         val view = (holder as? RecyclerView.ViewHolder)?.itemView ?: holder as? View ?: return null
-        val def = adapter?.definitions?.get(position) ?: return null
+        val def = adapter?.definitions?.firstOrNull { it.id == id } ?: return null
         view.tag = def.id
         val rightGap = when {
             !addSidePadding && def.maxCol == gridLayout.columnCount -> 0
@@ -174,7 +181,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
             else -> gap
         }
 
-        val params = def.buildLayoutParams(columnWidth, rightGap, bottomGap)
+        val params = def.buildLayoutParams(columnWidth, rightToLeft, columnCount, rightGap, bottomGap)
 
         params.rightMargin = rightGap
         params.bottomMargin = bottomGap
