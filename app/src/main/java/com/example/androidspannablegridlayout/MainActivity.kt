@@ -12,7 +12,6 @@ class MainActivity : AppCompatActivity() {
     private val items = (65..90).map { it.toChar().toString() }
 
     inner class Adapter : GridLayoutRecyclerView.Adapter<ViewHolder>() {
-        override var definitions: List<GridLayoutRecyclerView.Definition> = prepareItems()
 
         override fun onBindViewHolder(holder: ViewHolder, id: Int) {
             val index = definitions.indexOfFirst { it.id == id }
@@ -27,7 +26,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         gridLayoutRecyclerView = findViewById(R.id.grid_layout_recycler_view)
-        gridLayoutRecyclerView.adapter = Adapter()
+        gridLayoutRecyclerView.adapter = Adapter().apply {
+            prepareLayout(prepareItems())
+        }
     }
 
     private fun prepareItems() = listOf(
