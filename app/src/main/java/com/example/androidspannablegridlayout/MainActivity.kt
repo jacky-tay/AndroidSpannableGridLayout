@@ -7,11 +7,11 @@ import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var gridLayoutRecyclerView: GridLayoutRecyclerView<ViewHolder>
+    lateinit var gridLayoutRecyclerView: GridLayoutRecyclerView<ViewHolder, Int>
 
     private val items = (65..90).map { it.toChar().toString() }
 
-    inner class Adapter : GridLayoutRecyclerView.Adapter<ViewHolder>() {
+    inner class Adapter : GridLayoutRecyclerView.Adapter<ViewHolder, Int>() {
 
         override fun onBindViewHolder(holder: ViewHolder, id: Int) {
             val index = definitions.indexOfFirst { it.id == id }

@@ -16,7 +16,7 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 
-class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutListener,
+class GridLayoutRecyclerView<T, D> : ScrollView, ViewTreeObserver.OnGlobalLayoutListener,
     ViewTreeObserver.OnScrollChangedListener {
     constructor(context: Context) : super(context)
     constructor(context: Context, attributes: AttributeSet) : super(context, attributes) {
@@ -39,7 +39,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
     @DimenRes
     var margin = R.dimen.default_gap
     var addSidePadding = true
-    var adapter: Adapter<T>? = null
+    var adapter: Adapter<T, D>? = null
         set(newValue) {
             newValue?.columnCount = gridLayout.columnCount
             newValue?.let { maxRowCount = it.definitions.fold(0) { m, h -> max(m, h.maxRow) } }
@@ -56,8 +56,8 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
     private var gridLayout: GridLayout
     private var columnWidth = 0
     private var visibleRowCount = 0
-    private var cachedCell = SparseArray<T>()
-    private var reusableIds = mutableListOf<Int>()
+    private var cachedCell = mutableMapOf<D, T>()
+    private var reusableIds = mutableListOf<D>()
     private var visibleRowRange = 0..0
 
     private var cellGap: Int? = null
@@ -77,8 +77,8 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
     }
 
     // region Grid Layout Definition
-    class Definition(
-        val id: Int, val rowSpan: Int, val colSpan: Int,
+    class Definition<D>(
+        val id: D, val rowSpan: Int, val colSpan: Int,
         var rowStart: Int = -1, var colStart: Int = -1
     ) {
         val maxRow: Int
@@ -101,19 +101,19 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
     // endregion
 
     // region Grid Layout Adapter
-    abstract class Adapter<T> {
+    abstract class Adapter<T, D> {
         internal var columnCount = 6
-        internal var definitions: List<Definition> = emptyList()
+        internal var definitions: List<Definition<D>> = emptyList()
 
-        open fun getItemViewType(id: Int) = 0
+        open fun getItemViewType(id: D) = 0
 
-        abstract fun onBindViewHolder(holder: T, id: Int)
+        abstract fun onBindViewHolder(holder: T, id: D)
 
         abstract fun onCreateViewHolder(parent: ViewGroup, viewType: Int): T
 
         private val references = mutableListOf<MutableList<Boolean>>() // true = filled,
 
-        fun prepareLayout(inOrder: List<Definition>) {
+        fun prepareLayout(inOrder: List<Definition<D>>) {
             references.clear()
             processDefinition(inOrder)
             definitions = inOrder
@@ -138,7 +138,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
             }
         }
 
-        private fun register(row: Int, col: Int, item: Definition): Boolean {
+        private fun register(row: Int, col: Int, item: Definition<D>): Boolean {
             row.until(row + item.rowSpan).forEach { r ->
                 col.until(col + item.colSpan).forEach { c -> references[r][c] = true }
             }
@@ -147,7 +147,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
             return true
         }
 
-        private fun processDefinition(items: List<Definition>) = items.forEach { item ->
+        private fun processDefinition(items: List<Definition<D>>) = items.forEach { item ->
             var foundFreeSpace = false
             0.until(references.count()).forEach { r ->
                 val index = references[r].indexOfFirst { !it }
@@ -215,7 +215,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
         visibleRowRange = minVisibleRow..maxVisibleRow
     }
 
-    private fun prepareLayout(holder: T, id: Int): GridLayout.LayoutParams? {
+    private fun prepareLayout(holder: T, id: D): GridLayout.LayoutParams? {
         val view = (holder as? RecyclerView.ViewHolder)?.itemView ?: holder as? View ?: return null
         val def = adapter?.definitions?.firstOrNull { it.id == id } ?: return null
         view.tag = def.id
@@ -236,9 +236,9 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
         return params
     }
 
-    private fun prepareView(id: Int) = adapter?.apply {
+    private fun prepareView(id: D) = adapter?.apply {
         val viewType = getItemViewType(id)
-        var reuseId: Int? = null
+        var reuseId: D? = null
         val vh = reusableIds.firstOrNull { getItemViewType(id) == viewType }?.let {
             reuseId = it
             reusableIds.remove(it)
@@ -248,7 +248,7 @@ class GridLayoutRecyclerView<T> : ScrollView, ViewTreeObserver.OnGlobalLayoutLis
             Log.d("deque", "create: $id, reuseSize: ${reusableIds.size}")
         }
         onBindViewHolder(vh, id)
-        cachedCell.append(id, vh)
+        cachedCell[id] = vh
         prepareLayout(vh, id)?.let { params ->
             if (reuseId == null || gridLayout.findViewWithTag<View>(id) == null) ((vh as? RecyclerView.ViewHolder)?.itemView
                 ?: vh as? View)?.let {
