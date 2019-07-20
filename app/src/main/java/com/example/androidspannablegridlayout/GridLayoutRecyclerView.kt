@@ -77,7 +77,7 @@ class GridLayoutRecyclerView<T, D> : ScrollView, ViewTreeObserver.OnGlobalLayout
     }
 
     // region Grid Layout Definition
-    class Definition<D>(
+    open class Definition<D>(
         val id: D, val rowSpan: Int, val colSpan: Int,
         var rowStart: Int = -1, var colStart: Int = -1
     ) {

@@ -1,0 +1,131 @@
+[{
+  "colSpan": 2,
+  "colourId": 0,
+  "rowSpan": 2,
+  "id": "A"
+}, {
+  "colSpan": 2,
+  "colourId": 1,
+  "rowSpan": 1,
+  "id": "B"
+}, {
+  "colSpan": 1,
+  "colourId": 2,
+  "rowSpan": 1,
+  "id": "C"
+}, {
+  "colSpan": 1,
+  "colourId": 3,
+  "rowSpan": 1,
+  "id": "D"
+}, {
+  "colSpan": 1,
+  "colourId": 4,
+  "rowSpan": 2,
+  "id": "E"
+}, {
+  "colSpan": 1,
+  "colourId": 5,
+  "rowSpan": 1,
+  "id": "F"
+}, {
+  "colSpan": 2,
+  "colourId": 6,
+  "rowSpan": 2,
+  "id": "G"
+}, {
+  "colSpan": 2,
+  "colourId": 0,
+  "rowSpan": 1,
+  "id": "H"
+}, {
+  "colSpan": 1,
+  "colourId": 1,
+  "rowSpan": 1,
+  "id": "I"
+}, {
+  "colSpan": 3,
+  "colourId": 2,
+  "rowSpan": 3,
+  "id": "J"
+}, {
+  "colSpan": 2,
+  "colourId": 3,
+  "rowSpan": 3,
+  "id": "K"
+}, {
+  "colSpan": 1,
+  "colourId": 4,
+  "rowSpan": 1,
+  "id": "L"
+}, {
+  "colSpan": 4,
+  "colourId": 5,
+  "rowSpan": 1,
+  "id": "M"
+}, {
+  "colSpan": 2,
+  "colourId": 6,
+  "rowSpan": 2,
+  "id": "N"
+}, {
+  "colSpan": 1,
+  "colourId": 0,
+  "rowSpan": 2,
+  "id": "O"
+}, {
+  "colSpan": 2,
+  "colourId": 1,
+  "rowSpan": 1,
+  "id": "P"
+}, {
+  "colSpan": 2,
+  "colourId": 2,
+  "rowSpan": 1,
+  "id": "Q"
+}, {
+  "colSpan": 3,
+  "colourId": 3,
+  "rowSpan": 2,
+  "id": "R"
+}, {
+  "colSpan": 1,
+  "colourId": 4,
+  "rowSpan": 1,
+  "id": "S"
+}, {
+  "colSpan": 1,
+  "colourId": 5,
+  "rowSpan": 2,
+  "id": "T"
+}, {
+  "colSpan": 3,
+  "colourId": 6,
+  "rowSpan": 1,
+  "id": "U"
+}, {
+  "colSpan": 1,
+  "colourId": 0,
+  "rowSpan": 1,
+  "id": "V"
+}, {
+  "colSpan": 4,
+  "colourId": 1,
+  "rowSpan": 1,
+  "id": "W"
+}, {
+  "colSpan": 2,
+  "colourId": 2,
+  "rowSpan": 1,
+  "id": "X"
+}, {
+  "colSpan": 1,
+  "colourId": 3,
+  "rowSpan": 1,
+  "id": "Y"
+}, {
+  "colSpan": 1,
+  "colourId": 4,
+  "rowSpan": 1,
+  "id": "Z"
+}]

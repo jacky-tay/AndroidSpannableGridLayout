@@ -22,12 +22,11 @@ class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
     fun bind(value: String, pos: Int) {
         itemView.text_view.text = value
-        val index = pos % colors.size
-        itemView.text_view.setBackgroundColor(ContextCompat.getColor(itemView.context, colors[index]))
+        itemView.text_view.setBackgroundColor(ContextCompat.getColor(itemView.context, colors[pos]))
         itemView.text_view.setTextColor(
             ContextCompat.getColor(
                 itemView.context,
-                if (index < 5) android.R.color.black else android.R.color.white
+                if (pos < 5) android.R.color.black else android.R.color.white
             )
         )
     }
