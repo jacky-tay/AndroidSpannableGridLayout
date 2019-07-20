@@ -1,11 +1,9 @@
-package com.example.androidspannablegridlayout.model
+package spannable.grid.layout.model
 
 import androidx.annotation.RawRes
 import androidx.annotation.StringRes
-import com.example.androidspannablegridlayout.GridLayoutRecyclerView
-import com.example.androidspannablegridlayout.R
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import spannable.grid.layout.GridLayoutRecyclerView
+import spannable.grid.layout.R
 
 enum class Demo( @StringRes val title: Int, @RawRes val file: Int) {
     Basic(R.string.basic, R.raw.basic_example),

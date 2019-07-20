@@ -1,4 +1,4 @@
-package com.example.androidspannablegridlayout
+package spannable.grid.layout
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -7,16 +7,16 @@ import android.view.MenuItem
 import android.view.ViewGroup
 import androidx.annotation.RawRes
 import androidx.appcompat.app.AppCompatActivity
-import com.example.androidspannablegridlayout.model.BasicExample
-import com.example.androidspannablegridlayout.model.Demo
-import com.example.androidspannablegridlayout.model.DemoItem
-import com.example.androidspannablegridlayout.model.PredefinedExample
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import spannable.grid.layout.model.BasicExample
+import spannable.grid.layout.model.Demo
+import spannable.grid.layout.model.DemoItem
+import spannable.grid.layout.model.PredefinedExample
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var gridLayoutRecyclerView: GridLayoutRecyclerView<ViewHolder, String>
+    private lateinit var gridLayoutRecyclerView: GridLayoutRecyclerView<ViewHolder, String>
 
     private lateinit var items: List<GridLayoutRecyclerView.Definition<String>>
 

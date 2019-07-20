@@ -1,9 +1,8 @@
-package com.example.androidspannablegridlayout
+package spannable.grid.layout
 
 import android.content.Context
 import android.util.AttributeSet
 import android.util.Log
-import android.util.SparseArray
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver

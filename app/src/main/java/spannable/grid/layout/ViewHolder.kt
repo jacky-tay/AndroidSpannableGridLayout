@@ -1,4 +1,4 @@
-package com.example.androidspannablegridlayout
+package spannable.grid.layout
 
 import android.view.View
 import androidx.core.content.ContextCompat

@@ -7,7 +7,7 @@
         android:orientation="vertical"
         tools:context=".MainActivity">
 
-    <com.example.androidspannablegridlayout.GridLayoutRecyclerView
+    <spannable.grid.layout.GridLayoutRecyclerView
             android:id="@+id/grid_layout_recycler_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
