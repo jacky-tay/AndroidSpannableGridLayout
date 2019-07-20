@@ -11,6 +11,7 @@ import android.widget.ScrollView
 import android.widget.Space
 import androidx.annotation.DimenRes
 import androidx.recyclerview.widget.RecyclerView
+import java.lang.ref.WeakReference
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
@@ -41,6 +42,7 @@ class GridLayoutRecyclerView<T, D> : ScrollView, ViewTreeObserver.OnGlobalLayout
     var adapter: Adapter<T, D>? = null
         set(newValue) {
             newValue?.columnCount = gridLayout.columnCount
+            newValue?.weakReference = WeakReference(this)
             newValue?.let { maxRowCount = it.definitions.fold(0) { m, h -> max(m, h.maxRow) } }
             field = newValue
         }
@@ -101,7 +103,8 @@ class GridLayoutRecyclerView<T, D> : ScrollView, ViewTreeObserver.OnGlobalLayout
 
     // region Grid Layout Adapter
     abstract class Adapter<T, D> {
-        internal var columnCount = 6
+        internal lateinit var weakReference: WeakReference<GridLayoutRecyclerView<T, D>>
+        internal var columnCount: Int = 1
         internal var definitions: List<Definition<D>> = emptyList()
 
         open fun getItemViewType(id: D) = 0
@@ -114,6 +117,8 @@ class GridLayoutRecyclerView<T, D> : ScrollView, ViewTreeObserver.OnGlobalLayout
 
         fun prepareLayout(inOrder: List<Definition<D>>) {
             references.clear()
+            columnCount = max(columnCount, inOrder.maxBy { it.colSpan }?.colSpan ?: 1)
+            weakReference.get()?.columnCount = columnCount
             processDefinition(inOrder)
             definitions = inOrder
         }
