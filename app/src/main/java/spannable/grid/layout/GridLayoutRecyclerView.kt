@@ -80,20 +80,22 @@ class GridLayoutRecyclerView<T, D> : ScrollView, ViewTreeObserver.OnGlobalLayout
     // region Grid Layout Definition
     open class Definition<D>(
         val id: D, val rowSpan: Int, val colSpan: Int,
-        var rowStart: Int = -1, var colStart: Int = -1
+        var rowStart: Int? = null, var colStart: Int? = null
     ) {
         val maxRow: Int
-            get() = rowSpan + rowStart
+            get() = rowSpan + (rowStart ?: 0)
 
         val maxCol: Int
-            get() = colSpan + colStart
+            get() = colSpan + (colStart ?: 0)
+
+        fun defined() = ((rowStart ?: -1) >= 0) && ((colStart ?: -1) >= 0)
 
         fun buildLayoutParams(
             columnWidth: Int, rightToLeft: Boolean, columnCount: Int,
             rightGap: Int = 0, bottomGap: Int = 0
         ) = GridLayout.LayoutParams(
-            GridLayout.spec(rowStart, rowSpan),
-            GridLayout.spec(if (rightToLeft) columnCount - maxCol else colStart, colSpan)
+            GridLayout.spec(rowStart ?: 0, rowSpan),
+            GridLayout.spec(if (rightToLeft) columnCount - maxCol else colStart ?: 0, colSpan)
         ).apply {
             width = (columnWidth * colSpan) - rightGap
             height = (columnWidth * rowSpan) - bottomGap
@@ -117,10 +119,39 @@ class GridLayoutRecyclerView<T, D> : ScrollView, ViewTreeObserver.OnGlobalLayout
 
         fun prepareLayout(inOrder: List<Definition<D>>) {
             references.clear()
-            columnCount = max(columnCount, inOrder.maxBy { it.colSpan }?.colSpan ?: 1)
+            val undefined = preparePredefinedLayout(inOrder)
+            columnCount = max(columnCount, undefined.maxBy { it.colSpan }?.colSpan ?: 1)
             weakReference.get()?.columnCount = columnCount
-            processDefinition(inOrder)
+            processDefinition(undefined)
             definitions = inOrder
+            weakReference.get()?.reloadIfNeeded()
+        }
+
+        private fun preparePredefinedLayout(inOrder: List<Definition<D>>): List<Definition<D>> {
+            val defined = inOrder.filter { it.defined() }
+            val undefined = inOrder.filter { !it.defined() }.toMutableList()
+            columnCount = max(columnCount, (defined.maxBy { it.maxCol }?.maxCol ?: 1))
+            val rowCount = defined.maxBy { it.maxRow }?.maxRow ?: 1
+            addEmptyReferenceRow(rowCount)
+            for (item in defined) {
+                if (canFit(item.rowStart, item.colStart, item.rowSpan, item.colSpan)) {
+                    register(item.rowStart, item.colStart, item)
+                } else {
+                    val index = inOrder.indexOf(item)
+                    if (index != -1) {
+                        var pointer = index
+                        while (pointer < inOrder.count() && !inOrder[pointer].defined())
+                            pointer += 1
+                        if (pointer < inOrder.count()) {
+                            val anchorDefinition = inOrder[pointer]
+                            val anchorIndex = undefined.indexOf(anchorDefinition)
+                            if (anchorIndex != -1)
+                                undefined.add(anchorIndex, item)
+                        }
+                    }
+                }
+            }
+            return undefined
         }
 
         private fun addEmptyReferenceRow(times: Int = 1) =
@@ -130,19 +161,22 @@ class GridLayoutRecyclerView<T, D> : ScrollView, ViewTreeObserver.OnGlobalLayout
             if (columnIndex + colSpan > columnCount || row >= references.count()) false
             else references[row].subList(columnIndex, columnIndex + colSpan).all { !it }
 
-        private fun canFit(fromRow: Int, columnIndex: Int, rowIndex: Int, rowSpan: Int, colSpan: Int): Boolean {
+        private fun canFit(fromRow: Int?, columnIndex: Int?, rowSpan: Int, colSpan: Int, rowIndex: Int = 0): Boolean {
             return when {
+                fromRow == null || columnIndex == null -> false
                 references.count() <= fromRow + rowIndex -> {
                     addEmptyReferenceRow(fromRow + rowSpan - references.count() + 1)
                     true
                 }
                 rowSpan == rowIndex + 1 -> canFitAtRow(fromRow + rowIndex, columnIndex, colSpan)
                 else -> canFitAtRow(fromRow + rowIndex, columnIndex, colSpan) &&
-                        canFit(fromRow, columnIndex, rowIndex + 1, rowSpan, colSpan)
+                        canFit(fromRow, columnIndex, rowSpan, colSpan, rowIndex + 1)
             }
         }
 
-        private fun register(row: Int, col: Int, item: Definition<D>): Boolean {
+        private fun register(row: Int?, col: Int?, item: Definition<D>): Boolean {
+            if (row == null || col == null) return false
+
             row.until(row + item.rowSpan).forEach { r ->
                 col.until(col + item.colSpan).forEach { c -> references[r][c] = true }
             }
@@ -155,7 +189,7 @@ class GridLayoutRecyclerView<T, D> : ScrollView, ViewTreeObserver.OnGlobalLayout
             var foundFreeSpace = false
             0.until(references.count()).forEach { r ->
                 val index = references[r].indexOfFirst { !it }
-                if (!foundFreeSpace && index != -1 && canFit(r, index, 0, item.rowSpan, item.colSpan)) {
+                if (!foundFreeSpace && index != -1 && canFit(r, index, item.rowSpan, item.colSpan)) {
                     foundFreeSpace = register(r, index, item)
                 }
             }
@@ -167,6 +201,18 @@ class GridLayoutRecyclerView<T, D> : ScrollView, ViewTreeObserver.OnGlobalLayout
         }
     }
     // endregion
+
+    internal fun reloadIfNeeded() {
+        if (gridLayout.childCount > 0) {
+            gridLayout.removeAllViews()
+            cachedCell.clear()
+            reusableIds.clear()
+            visibleRowRange = 0..0
+            val sideGap = if (addSidePadding) gap else 0
+            columnWidth = (gridLayout.width - sideGap) / gridLayout.columnCount
+            prepareViews()
+        }
+    }
 
     // region ViewTreeObserver.OnGlobalLayoutListener
     override fun onGlobalLayout() {
@@ -203,7 +249,7 @@ class GridLayoutRecyclerView<T, D> : ScrollView, ViewTreeObserver.OnGlobalLayout
 
         if (!visibleRowRange.contains(minVisibleRow) || !visibleRowRange.contains(maxVisibleRow)) {
             val visibleIds = definitions
-                .filter { it.maxRow >= minVisibleRow && it.rowStart <= maxVisibleRow }
+                .filter { it.maxRow >= minVisibleRow && (it.rowStart ?: -1) <= maxVisibleRow }
                 .map { it.id }
 
             reusableIds = definitions.map { it.id }
